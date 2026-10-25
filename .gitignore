@@ -4,7 +4,9 @@
 firmware/**/secrets.h
 *.zip
 *.html
+*.pdf
 prompts/
+SAAKSHI_COMPLETE_DEEP_DIVE.md
 
 # python
 __pycache__/
