@@ -1,0 +1,312 @@
+/* ============================================================================
+   SAAKSHI — DESIGN TOKENS
+   ----------------------------------------------------------------------------
+   Concept: "the official ledger."  Saakshi reads paper registers, so the
+   interface is built like a well-made government register — warm paper surfaces,
+   hairline rules instead of drop shadows, tabular figures everywhere, and one
+   reserved accent for things that need a human to act. It should read as an
+   instrument of record, not as a SaaS analytics product.
+
+   The categorical series palette below is NOT decorative. It was validated with
+   scripts/validate_palette.js against these exact surfaces:
+
+     light surface #faf9f6 — ALL CHECKS PASS
+       lightness band PASS · chroma floor PASS
+       CVD separation PASS (worst adjacent ΔE 9.1, protan)
+       normal-vision floor PASS (worst adjacent ΔE 19.6)
+       contrast WARN on aqua/yellow/magenta → relief rule applies:
+       those three ALWAYS ship with a visible direct label or a table view.
+
+     dark surface #15171a — ALL CHECKS PASS (contrast included)
+
+   Do not add, reorder or "brighten" a series colour. Re-run the validator if you
+   must change one, and only keep an order that passes every gate in both modes.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* ---- surfaces: warm paper, not cold white ---------------------------- */
+  --surface-page:      #f4f2ed;   /* the desk the register sits on */
+  --surface-card:      #faf9f6;   /* the page itself; also the chart surface */
+  --surface-raised:    #ffffff;   /* modals, popovers, the active row */
+  --surface-sunken:    #edebe4;   /* table headers, inset wells */
+  --surface-inverse:   #15171a;
+
+  /* ---- ink ------------------------------------------------------------- */
+  --ink-primary:       #14161a;
+  --ink-secondary:     #4a4f57;
+  --ink-muted:         #7c828c;   /* axis labels, timestamps, helper text */
+  --ink-onDark:        #f2f1ec;
+  --ink-onAccent:      #ffffff;
+
+  /* ---- rules: hairlines carry the structure, shadows almost never ------- */
+  --rule-hair:         rgba(20, 22, 26, 0.10);
+  --rule-strong:       rgba(20, 22, 26, 0.22);
+  --rule-ledger:       rgba(20, 22, 26, 0.07);  /* the ruled lines in a table */
+
+  /* ---- brand: deep official navy + one reserved amber ------------------- */
+  --brand-900:         #0f2740;
+  --brand-800:         #14314e;
+  --brand-700:         #1b3a5c;   /* masthead, primary buttons */
+  --brand-600:         #24507d;
+  --brand-500:         #2a78d6;   /* interactive, links, focus */
+  --brand-100:         #e4edf8;
+  --brand-050:         #f1f6fc;
+
+  /* The accent is RESERVED for "a human must act on this" — a flagged field,
+     an unpaid amount, a pending grievance. Never use it for decoration, never
+     for a chart series, never for a heading. Its scarcity is what makes it work. */
+  --accent-600:        #a8620a;
+  --accent-500:        #c77d13;
+  --accent-100:        #fbf0dc;
+
+  /* ---- status: fixed, never themed, always paired with an icon + label --- */
+  --status-good:       #0ca30c;
+  --status-warning:    #fab219;
+  --status-serious:    #ec835a;
+  --status-critical:   #d03b3b;
+  --status-good-ink:   #006300;   /* "good" as TEXT, for contrast on paper */
+  --status-crit-ink:   #a52121;
+
+  /* ---- categorical series (validated — see header) ---------------------- */
+  --series-1:          #2a78d6;   /* blue    */
+  --series-2:          #eb6834;   /* orange  */
+  --series-3:          #1baf7a;   /* aqua    · needs direct label */
+  --series-4:          #eda100;   /* yellow  · needs direct label */
+  --series-5:          #e87ba4;   /* magenta · needs direct label */
+  --series-6:          #008300;   /* green   */
+  --series-7:          #6250d6;   /* violet  */
+  --series-8:          #e34948;   /* red     */
+
+  /* Scatter / bubble / choropleth / small-multiple charts use ALL pairs, not
+     just adjacent ones, and the full eight cannot clear the floors that way.
+     Those forms cap at three series; past three, fold to "Other" or facet. */
+  --series-allpairs-cap: 3;
+
+  /* ---- sequential ramp (single hue, light → dark) ----------------------- */
+  --seq-100: #cde2fb;  --seq-250: #86b6ef;  --seq-400: #3987e5;  --seq-550: #1c5cab;
+  --seq-150: #b7d3f6;  --seq-300: #6da7ec;  --seq-450: #2a78d6;  --seq-600: #184f95;
+  --seq-200: #9ec5f4;  --seq-350: #5598e7;  --seq-500: #256abf;  --seq-650: #104281;
+  --seq-700: #0d366b;
+  /* Ordinal (discrete ordered) ramps start no lighter than --seq-250 on paper. */
+
+  /* ---- diverging: blue ↔ red, neutral grey midpoint --------------------- */
+  --div-neg: #2a78d6;
+  --div-mid: #e8e6df;
+  --div-pos: #d03b3b;
+
+  /* ---- chart chrome ----------------------------------------------------- */
+  --chart-grid:        #e3e1d9;
+  --chart-axis:        #c5c3ba;
+  --chart-surface:     var(--surface-card);
+
+  /* ---- type -------------------------------------------------------------
+     Devanagari and Tamil are first-class here, not an afterthought: a worker
+     reads this in their own script or not at all. Noto Sans leads the stack so
+     a Hindi label and an English label share a baseline and a weight. */
+  --font-ui:
+    "Inter", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Tamil",
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num:
+    "Inter", "Noto Sans", system-ui, -apple-system, sans-serif;
+  --font-mono:
+    "JetBrains Mono", "SF Mono", ui-monospace, "Cascadia Mono", Menlo, monospace;
+
+  /* A restrained scale. Government data is dense; oversized type is the enemy
+     of density, and density is the point. */
+  --text-xs:   0.75rem;    /* 12px — timestamps, table meta */
+  --text-sm:   0.8125rem;  /* 13px — table body, helper text */
+  --text-base: 0.9375rem;  /* 15px — body copy */
+  --text-md:   1.0625rem;  /* 17px — card titles */
+  --text-lg:   1.375rem;   /* 22px — section headings */
+  --text-xl:   1.875rem;   /* 30px — page title */
+  --text-fig:  2.5rem;     /* 40px — stat-tile figure */
+  --text-hero: 3.25rem;    /* 52px — the single headline number */
+
+  --leading-tight: 1.2;
+  --leading-snug:  1.4;
+  --leading-body:  1.6;
+
+  --weight-regular: 400;
+  --weight-medium:  500;
+  --weight-semi:    600;
+  --weight-bold:    700;
+
+  --tracking-caps: 0.08em;  /* for the small uppercase section labels */
+
+  /* ---- space: 4px base ---------------------------------------------- */
+  --space-1: 0.25rem;  --space-2: 0.5rem;   --space-3: 0.75rem;
+  --space-4: 1rem;     --space-5: 1.5rem;   --space-6: 2rem;
+  --space-7: 2.5rem;   --space-8: 3rem;     --space-9: 4rem;
+
+  /* ---- radius: small. A register has corners, not pills. ---------------- */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;   /* status pills only */
+
+  /* ---- elevation: used sparingly. Structure comes from rules. ----------- */
+  --shadow-none: none;
+  --shadow-sm:   0 1px 2px rgba(20, 22, 26, 0.06);
+  --shadow-md:   0 2px 8px rgba(20, 22, 26, 0.08), 0 1px 2px rgba(20, 22, 26, 0.04);
+  --shadow-lg:   0 8px 28px rgba(20, 22, 26, 0.12), 0 2px 6px rgba(20, 22, 26, 0.06);
+
+  /* ---- motion ----------------------------------------------------------- */
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast:   120ms;
+  --dur-base:   200ms;
+  --dur-slow:   320ms;
+
+  /* ---- layout ----------------------------------------------------------- */
+  --sidebar-w:        260px;
+  --sidebar-w-collapsed: 64px;
+  --masthead-h:       56px;
+  --topbar-h:         60px;
+  --content-max:      1600px;
+  --focus-ring:       2px solid var(--brand-500);
+  --focus-offset:     2px;
+}
+
+/* ============================== DARK MODE ==================================
+   Selected, not flipped. Every series value below is the same hue re-stepped
+   for the dark surface and validated as a set against #15171a.
+   ========================================================================= */
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+
+    --surface-page:    #0d0f11;
+    --surface-card:    #15171a;
+    --surface-raised:  #1d2024;
+    --surface-sunken:  #101215;
+    --surface-inverse: #faf9f6;
+
+    --ink-primary:     #f2f1ec;
+    --ink-secondary:   #b9bcc2;
+    --ink-muted:       #868b94;
+    --ink-onDark:      #f2f1ec;
+
+    --rule-hair:       rgba(255, 255, 255, 0.10);
+    --rule-strong:     rgba(255, 255, 255, 0.22);
+    --rule-ledger:     rgba(255, 255, 255, 0.06);
+
+    --brand-900:       #0a1a2b;
+    --brand-700:       #c3d7ef;
+    --brand-600:       #a8c4e6;
+    --brand-500:       #3987e5;
+    --brand-100:       #1a2a3d;
+    --brand-050:       #141d28;
+
+    --accent-600:      #e8a93f;
+    --accent-500:      #d9942a;
+    --accent-100:      #2b2114;
+
+    --status-good-ink: #0ca30c;
+    --status-crit-ink: #e66767;
+
+    --series-1: #3987e5;  --series-2: #d95926;
+    --series-3: #199e70;  --series-4: #c98500;
+    --series-5: #d55181;  --series-6: #008300;
+    --series-7: #9085e9;  --series-8: #e66767;
+
+    --div-mid:    #383835;
+    --chart-grid: #292c30;
+    --chart-axis: #3a3e43;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* The explicit toggle must beat the OS setting in both directions. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-page:    #0d0f11;
+  --surface-card:    #15171a;
+  --surface-raised:  #1d2024;
+  --surface-sunken:  #101215;
+  --surface-inverse: #faf9f6;
+
+  --ink-primary:     #f2f1ec;
+  --ink-secondary:   #b9bcc2;
+  --ink-muted:       #868b94;
+  --ink-onDark:      #f2f1ec;
+
+  --rule-hair:       rgba(255, 255, 255, 0.10);
+  --rule-strong:     rgba(255, 255, 255, 0.22);
+  --rule-ledger:     rgba(255, 255, 255, 0.06);
+
+  --brand-900:       #0a1a2b;
+  --brand-700:       #c3d7ef;
+  --brand-600:       #a8c4e6;
+  --brand-500:       #3987e5;
+  --brand-100:       #1a2a3d;
+  --brand-050:       #141d28;
+
+  --accent-600:      #e8a93f;
+  --accent-500:      #d9942a;
+  --accent-100:      #2b2114;
+
+  --status-good-ink: #0ca30c;
+  --status-crit-ink: #e66767;
+
+  --series-1: #3987e5;  --series-2: #d95926;
+  --series-3: #199e70;  --series-4: #c98500;
+  --series-5: #d55181;  --series-6: #008300;
+  --series-7: #9085e9;  --series-8: #e66767;
+
+  --div-mid:    #383835;
+  --chart-grid: #292c30;
+  --chart-axis: #3a3e43;
+}
+
+/* ============================== BASE ===================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--ink-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Every figure in this product is money, days or a count, and figures are read
+   in columns. Tabular numerals are the default, not the exception. */
+.num, table, .stat-figure, .ledger td, input[type="number"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+:where(a) { color: var(--brand-500); text-underline-offset: 2px; }
+
+:where(:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--radius-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Forced-colors / high-contrast: structure must survive without our palette. */
+@media (forced-colors: active) {
+  .card, .ledger, .stat-tile { border: 1px solid CanvasText; }
+}

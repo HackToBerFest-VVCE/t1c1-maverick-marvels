@@ -1,0 +1,177 @@
+/* ============================================================================
+   SAAKSHI — CHART CHROME
+   Requires tokens.css.
+
+   Rules that are not negotiable, and the reason for each:
+
+   1. ONE axis. Never a dual-axis chart. Two measures of different scale become
+      two charts, small multiples, or both indexed to a common base. This is the
+      single most common chart mistake.
+   2. Categorical hues are assigned in FIXED ORDER, never cycled. A ninth series
+      is not a new hue — it folds into "Other", or the chart facets.
+   3. Colour follows the entity, never its rank. A filter that drops series must
+      not repaint the survivors.
+   4. Sequential = one hue, light→dark. Diverging = two hues with a NEUTRAL GREY
+      midpoint. Never a rainbow, never a hue at the diverging midpoint.
+   5. Text wears ink tokens, never the series colour. A coloured mark beside the
+      label carries identity; the label itself stays in primary/secondary/muted.
+   6. Two or more series always get a legend. Four or fewer are ALSO direct-
+      labelled, so identity is never carried by colour alone.
+   7. Series 3, 4 and 5 sit below 3:1 on the paper surface. Wherever they
+      appear, ship a visible direct label or the table view. Not optional.
+   8. Scatter, bubble, choropleth and small multiples cap at THREE series.
+   ========================================================================== */
+
+.viz {
+  background: var(--chart-surface);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+.viz__head { margin-bottom: var(--space-4); }
+.viz__title { font-size: var(--text-sm); font-weight: var(--weight-semi);
+              color: var(--ink-primary); margin: 0 0 2px; }
+.viz__sub   { font-size: var(--text-xs); color: var(--ink-muted); margin: 0; }
+
+/* ---- axes and grid: recessive. The data is the figure; these are ground. -- */
+.viz .grid line,
+.viz .tick line { stroke: var(--chart-grid); stroke-width: 1; shape-rendering: crispEdges; }
+.viz .domain,
+.viz .baseline  { stroke: var(--chart-axis); stroke-width: 1; }
+.viz .tick text { fill: var(--ink-muted); font-size: var(--text-xs);
+                  font-variant-numeric: tabular-nums; }
+.viz .axis-title { fill: var(--ink-secondary); font-size: var(--text-xs);
+                   font-weight: var(--weight-medium); }
+
+/* Horizontal gridlines only, on the value axis. Category axes get no grid. */
+.viz .grid--x { display: none; }
+
+/* ---- marks -------------------------------------------------------------- */
+
+/* Bars: thin, with a 4px rounded data-end anchored to the baseline. A 2px
+   surface-coloured gap separates adjacent and stacked fills so two series never
+   touch — that gap is what makes a stack readable for a colourblind viewer. */
+.viz .bar { rx: 4; ry: 4; }
+.viz .bar + .bar,
+.viz .stack-seg + .stack-seg { stroke: var(--chart-surface); stroke-width: 2; }
+
+/* Lines: 2px, round joins, no shadow, no gradient fill under them by default. */
+.viz .line {
+  fill: none; stroke-width: 2;
+  stroke-linejoin: round; stroke-linecap: round;
+}
+.viz .line--forecast { stroke-dasharray: 4 4; }
+
+/* Points: at least 8px, with a surface ring so overlaps stay countable. */
+.viz .point { r: 4; stroke: var(--chart-surface); stroke-width: 2; }
+
+/* Area: a light wash of its own series hue, never a rainbow gradient. */
+.viz .area { fill-opacity: 0.12; stroke: none; }
+
+/* ---- series slots -------------------------------------------------------- */
+.viz [data-series="1"] { fill: var(--series-1); stroke: var(--series-1); }
+.viz [data-series="2"] { fill: var(--series-2); stroke: var(--series-2); }
+.viz [data-series="3"] { fill: var(--series-3); stroke: var(--series-3); }
+.viz [data-series="4"] { fill: var(--series-4); stroke: var(--series-4); }
+.viz [data-series="5"] { fill: var(--series-5); stroke: var(--series-5); }
+.viz [data-series="6"] { fill: var(--series-6); stroke: var(--series-6); }
+.viz [data-series="7"] { fill: var(--series-7); stroke: var(--series-7); }
+.viz [data-series="8"] { fill: var(--series-8); stroke: var(--series-8); }
+.viz [data-series="other"] { fill: var(--ink-muted); stroke: var(--ink-muted); }
+
+/* ---- legend: present whenever there are two or more series --------------- */
+.viz__legend {
+  display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--rule-ledger);
+}
+.viz__legend-item {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);      /* never the series colour */
+}
+.viz__swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+
+/* A legend item the user has toggled off recedes but stays readable. */
+.viz__legend-item[aria-pressed="false"] { opacity: 0.4; }
+
+/* ---- direct labels: selective. Never a number on every point. ------------ */
+.viz .label-direct {
+  fill: var(--ink-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--chart-surface);
+  stroke-width: 3px;               /* a halo, so the label survives over a mark */
+}
+
+/* A label sitting INSIDE a filled bar goes white — except on yellow, where it
+   must go dark or it disappears. */
+.viz .label-inside { fill: #fff; stroke: none; }
+.viz [data-series="4"] .label-inside { fill: #0b0b0b; }
+
+/* ---- hover layer: shipped by default on every plotted chart --------------- */
+.viz__crosshair { stroke: var(--rule-strong); stroke-width: 1; stroke-dasharray: 3 3; }
+
+.viz__tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+  min-width: 140px;
+  padding: var(--space-3);
+  background: var(--surface-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+.viz__tooltip-title {
+  font-weight: var(--weight-semi); color: var(--ink-primary);
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--rule-ledger);
+}
+.viz__tooltip-row {
+  display: flex; align-items: center; gap: var(--space-2);
+  color: var(--ink-secondary);
+}
+.viz__tooltip-row .num {
+  margin-left: auto; font-weight: var(--weight-semi); color: var(--ink-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hit targets are larger than the marks they serve. */
+.viz .hit { fill: transparent; stroke: none; cursor: pointer; }
+
+/* ---- the table view: the accessibility fallback, always reachable --------- */
+.viz__table-toggle {
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  background: none; border: none; padding: 0;
+  color: var(--brand-500); cursor: pointer; text-decoration: underline;
+}
+
+/* ---- texture: the CVD / print / forced-colors channel. Never decorative,
+   never on by default. One hand-drawn lines fill at 45° and its 135° mirror. -- */
+.viz[data-texture="on"] [data-series="1"] { fill: url(#tex-45); }
+.viz[data-texture="on"] [data-series="2"] { fill: url(#tex-135); }
+
+@media (forced-colors: active) {
+  .viz .bar, .viz .stack-seg { forced-color-adjust: none; }
+}
+
+/* ---- hero figure: for when the answer is one number, not a chart ---------- */
+.viz--hero { display: flex; flex-direction: column; gap: var(--space-2); }
+.viz__hero-figure {
+  font-family: var(--font-num);
+  font-size: var(--text-hero);
+  font-weight: var(--weight-semi);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink-primary);
+}
+.viz__hero-context { font-size: var(--text-sm); color: var(--ink-secondary); }

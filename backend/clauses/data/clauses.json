@@ -1,0 +1,74 @@
+[
+  {
+    "id": "s5_3",
+    "section_reference": "Section 5(3)",
+    "title": "Minimum Wage Rate & Daily Floor",
+    "verbatim_text": "The wage rate notified by the Central Government for VB-G RAM G workers shall not be less than three hundred rupees per day.",
+    "plain_language_gloss": "Every worker is legally guaranteed at least ₹300 per day worked. No authority may sanction or pay a lower rate.",
+    "as_of_date": "2026-07-01",
+    "tags": ["wage", "floor", "rate", "underpayment"]
+  },
+  {
+    "id": "s20",
+    "section_reference": "Section 20",
+    "title": "Right to 125 Days Guaranteed Rural Work",
+    "verbatim_text": "Every rural household whose adult members volunteer to do unskilled manual work shall be entitled to not less than one hundred twenty-five days of guaranteed employment in every financial year.",
+    "plain_language_gloss": "Each rural household is guaranteed up to 125 days of paid manual work per year under VB-G RAM G.",
+    "as_of_date": "2026-07-01",
+    "tags": ["entitlement", "cap", "125 days", "household"]
+  },
+  {
+    "id": "s24_d",
+    "section_reference": "Section 24(d)",
+    "title": "Prohibition of Fraudulent Attendance and Phantom Workers",
+    "verbatim_text": "Any person who knowingly enters false attendance records on a muster roll, creates fictitious entries, or excludes actual workers shall be liable to penalties and recovery of sums disbursed.",
+    "plain_language_gloss": "Excluding a worker who was present, or marking zero days when they worked, is a statutory violation requiring immediate grievance filing and wage recovery.",
+    "as_of_date": "2026-07-01",
+    "tags": ["muster", "attendance", "missing days", "exclusion"]
+  },
+  {
+    "id": "sch1_p15",
+    "section_reference": "Schedule I, Paragraph 15",
+    "title": "Public Display of Works and Citizen Information Boards",
+    "verbatim_text": "Every worksite shall display a Citizen Information Board detailing the sanctioned cost, person days, daily wage rate, and duration of the work in prominent local language.",
+    "plain_language_gloss": "Worksites must publicly display the sanctioned daily wage rate and days so workers can verify what is due to them.",
+    "as_of_date": "2026-07-01",
+    "tags": ["worksite", "board", "display", "notified rate"]
+  },
+  {
+    "id": "sch1_p25",
+    "section_reference": "Schedule I, Paragraph 25",
+    "title": "Fortnightly Payment of Wages",
+    "verbatim_text": "Wages shall be disbursed on a weekly basis or in any case not later than a fortnight after the date on which work was performed.",
+    "plain_language_gloss": "Wages must be credited into the worker's bank or post office account within 14 to 16 days of muster roll closure.",
+    "as_of_date": "2026-07-01",
+    "tags": ["payment", "timeline", "fortnight", "disbursement"]
+  },
+  {
+    "id": "sch1_p32",
+    "section_reference": "Schedule I, Paragraph 32",
+    "title": "Worker Right to Certified Copies of Muster Rolls Free of Cost",
+    "verbatim_text": "Every worker or social audit resource person shall be entitled to inspect muster rolls and obtain certified photocopies free of charge within seven days of application.",
+    "plain_language_gloss": "Workers have a strict legal right to obtain certified copies of muster rolls without payment, to prove attendance discrepancies.",
+    "as_of_date": "2026-07-01",
+    "tags": ["muster roll", "copies", "inspection", "records"]
+  },
+  {
+    "id": "sch2_p1_7",
+    "section_reference": "Schedule II, Paragraph 1(7)",
+    "title": "Worker Job Card Maintenance and Custody",
+    "verbatim_text": "The Job Card shall remain in the custody of the worker at all times and no official or contractor may retain it under any pretext. Entries of days worked and wages credited must be updated promptly.",
+    "plain_language_gloss": "Job cards belong to workers. Keeping them or failing to record actual worked days is an offence.",
+    "as_of_date": "2026-07-01",
+    "tags": ["job card", "custody", "entries"]
+  },
+  {
+    "id": "sch2_p6",
+    "section_reference": "Schedule II, Paragraph 6",
+    "title": "Delay Compensation for Late Wage Payment",
+    "verbatim_text": "In case of delay in payment of wages beyond sixteen days of muster roll closure, workers shall be entitled to compensation at the rate of 0.05% of the unpaid wages per day of delay until full disbursement.",
+    "plain_language_gloss": "If wages are paid late (after day 16), workers are legally owed 0.05% per day on the unpaid amount as delay compensation.",
+    "as_of_date": "2026-07-01",
+    "tags": ["delay", "compensation", "interest", "penalty", "late payment"]
+  }
+]
