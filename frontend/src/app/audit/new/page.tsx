@@ -12,6 +12,7 @@ import {
   ArrowRight,
   ShieldCheck,
   FileText,
+  RotateCcw,
 } from "lucide-react";
 
 interface FieldState {
@@ -19,7 +20,6 @@ interface FieldState {
   label: string;
   value: string;
   confidence: number;
-  crop_ref: [number, number, number, number];
   confirmed: boolean;
   touched: boolean;
   isIdentifier?: boolean;
@@ -31,7 +31,6 @@ const INITIAL_JOB_CARD_FIELDS: FieldState[] = [
     label: "Days Worked on Card",
     value: "6",
     confidence: 0.68, // Low confidence (<0.75), sorts to top
-    crop_ref: [450, 80, 510, 220],
     confirmed: false,
     touched: false,
   },
@@ -40,7 +39,6 @@ const INITIAL_JOB_CARD_FIELDS: FieldState[] = [
     label: "Job Card Number",
     value: "MH-04-002-019-001/4218",
     confidence: 0.94,
-    crop_ref: [120, 60, 180, 480],
     confirmed: false,
     touched: false,
     isIdentifier: true,
@@ -50,7 +48,6 @@ const INITIAL_JOB_CARD_FIELDS: FieldState[] = [
     label: "Worker Name",
     value: "कमलाबाई रामचंद्र जाधव",
     confidence: 0.88,
-    crop_ref: [210, 60, 260, 520],
     confirmed: false,
     touched: false,
   },
@@ -59,7 +56,6 @@ const INITIAL_JOB_CARD_FIELDS: FieldState[] = [
     label: "Gram Panchayat",
     value: "बोरगाव (Borgaon)",
     confidence: 0.92,
-    crop_ref: [350, 60, 400, 390],
     confirmed: false,
     touched: false,
   },
@@ -68,7 +64,6 @@ const INITIAL_JOB_CARD_FIELDS: FieldState[] = [
     label: "Muster Roll Ref",
     value: "MR-2026-0819",
     confidence: 0.91,
-    crop_ref: [530, 80, 590, 350],
     confirmed: false,
     touched: false,
   },
@@ -77,11 +72,19 @@ const INITIAL_JOB_CARD_FIELDS: FieldState[] = [
     label: "Daily Wage Rate (₹)",
     value: "300",
     confidence: 0.98,
-    crop_ref: [750, 80, 800, 260],
     confirmed: false,
     touched: false,
   },
 ];
+
+const CROP_MAP: Record<string, { top: string; height: string; label: string }> = {
+  job_card_id: { top: "72px", height: "36px", label: "Job Card Number" },
+  worker_name: { top: "114px", height: "36px", label: "Worker Name" },
+  village_panchayat: { top: "156px", height: "36px", label: "Gram Panchayat" },
+  muster_roll_no: { top: "220px", height: "36px", label: "Muster Roll Ref" },
+  days_worked: { top: "264px", height: "42px", label: "Days Worked (Smudged)" },
+  wage_rate_rupees: { top: "312px", height: "36px", label: "Daily Wage Rate" },
+};
 
 export default function CaptureAndVerifyPage() {
   const router = useRouter();
@@ -91,6 +94,7 @@ export default function CaptureAndVerifyPage() {
   const [activeKey, setActiveKey] = useState<string>("days_worked");
   const [revealedIds, setRevealedIds] = useState<Record<string, boolean>>({});
   const [fields, setFields] = useState<FieldState[]>(INITIAL_JOB_CARD_FIELDS);
+  const [uploadedImageSrc, setUploadedImageSrc] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -99,7 +103,7 @@ export default function CaptureAndVerifyPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadStatus("Processing on device (stripping EXIF & optimizing)...");
+    setUploadStatus("Processing image on device (stripping EXIF & optimizing)...");
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -126,12 +130,12 @@ export default function CaptureAndVerifyPage() {
 
         // Re-encoding to JPEG cleanly strips EXIF/GPS metadata
         canvas.toBlob((blob) => {
-          setUploadStatus("Document parsed by Gemma 4. Ready for human verification.");
-          // Reset confirm states for newly uploaded document
-          setFields((prev) =>
-            prev.map((f) => ({ ...f, confirmed: false, touched: false }))
-          );
-        }, "image/jpeg", 0.88);
+          if (blob) {
+            const cleanUrl = URL.createObjectURL(blob);
+            setUploadedImageSrc(cleanUrl);
+            setUploadStatus("Photo loaded & stripped. Ready for human verification.");
+          }
+        }, "image/jpeg", 0.90);
       };
       img.src = event.target?.result as string;
     };
@@ -219,6 +223,8 @@ export default function CaptureAndVerifyPage() {
     return 0;
   });
 
+  const activeCrop = CROP_MAP[activeKey] || CROP_MAP["days_worked"];
+
   return (
     <div>
       {/* Step 1: Capture Bar */}
@@ -263,6 +269,16 @@ export default function CaptureAndVerifyPage() {
             >
               <Camera size={16} /> Camera Capture
             </button>
+            {uploadedImageSrc && (
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => setUploadedImageSrc(null)}
+                style={{ fontSize: "var(--text-xs)" }}
+              >
+                <RotateCcw size={14} /> Reset to Sample Card
+              </button>
+            )}
           </div>
 
           <div style={{ marginLeft: "auto", fontSize: "var(--text-xs)", color: "var(--ink-muted)" }}>
@@ -281,13 +297,31 @@ export default function CaptureAndVerifyPage() {
 
       {/* Step 2: Verification Pane (.verify) */}
       <section className="verify">
-        {/* Left: Sticky Image Preview with Simulated Crop Highlight */}
+        {/* Left: Sticky Image Preview with Precise Active Field Crop */}
         <div className="verify__crop">
-          <div style={{ padding: "var(--space-3)", background: "var(--surface-sunken)", borderBottom: "1px solid var(--rule-hair)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div
+            style={{
+              padding: "var(--space-3)",
+              background: "var(--surface-sunken)",
+              borderBottom: "1px solid var(--rule-hair)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--weight-semi)" }}>
               Source Document Photo
             </span>
-            <span style={{ fontSize: "var(--text-xs)", color: "var(--ink-muted)" }}>
+            <span
+              style={{
+                fontSize: "var(--text-xs)",
+                color: "var(--accent-600)",
+                fontWeight: "var(--weight-semi)",
+                background: "var(--accent-100)",
+                padding: "2px 8px",
+                borderRadius: "var(--radius-pill)",
+              }}
+            >
               Target: {fields.find((f) => f.key === activeKey)?.label}
             </span>
           </div>
@@ -296,75 +330,252 @@ export default function CaptureAndVerifyPage() {
             style={{
               position: "relative",
               width: "100%",
-              height: "440px",
-              background: "#edeae2",
+              minHeight: "460px",
+              background: "var(--surface-sunken)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              padding: "var(--space-4)",
+              justifyContent: "flex-start",
+              padding: "var(--space-3)",
               overflow: "hidden",
             }}
           >
-            {/* Visual Simulated Document Register Sheet */}
-            <div
-              style={{
-                width: "90%",
-                height: "92%",
-                background: "#faf9f6",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-                borderRadius: "3px",
-                border: "1px solid #d5d1c8",
-                padding: "var(--space-4)",
-                fontFamily: "var(--font-mono)",
-                fontSize: "11px",
-                color: "#2a2d34",
-                lineHeight: "1.8",
-                position: "relative",
-              }}
-            >
-              <div style={{ borderBottom: "2px solid #0f2740", paddingBottom: "4px", fontWeight: "bold" }}>
-                महाराष्ट्र शासन — रोजगार हमी योजना (VB-G RAM G)
+            {uploadedImageSrc ? (
+              /* User Uploaded Document View */
+              <div style={{ position: "relative", width: "100%", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+                <img
+                  src={uploadedImageSrc}
+                  alt="Uploaded document"
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                />
+                {/* Scaled Crop Overlay */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: activeCrop.top,
+                    left: "4%",
+                    width: "92%",
+                    height: activeCrop.height,
+                    border: "2px solid var(--accent-500)",
+                    background: "rgba(199, 125, 19, 0.18)",
+                    borderRadius: "3px",
+                    boxShadow: "0 0 0 1px rgba(0,0,0,0.5)",
+                    pointerEvents: "none",
+                    transition: "all 200ms var(--ease-out)",
+                  }}
+                />
               </div>
-              <div style={{ marginTop: "8px" }}>
-                <strong>जॉब कार्ड क्र:</strong> MH-04-002-019-001/4218
-              </div>
-              <div>
-                <strong>कामगाराचे नाव:</strong> कमलाबाई रामचंद्र जाधव
-              </div>
-              <div>
-                <strong>ग्राम पंचायत:</strong> बोरगाव
-              </div>
-              <div style={{ marginTop: "12px", border: "1px solid #c5c1b8", padding: "6px" }}>
-                <div>मस्टर क्र: MR-2026-0819 (01-08-2026 ते 07-08-2026)</div>
-                <div style={{ color: "#a8620a", fontWeight: "bold" }}>
-                  एकूण कामाचे दिवस: [ 6 दिवस ]
-                </div>
-                <div>दैनिक मजुरी दर: ₹300.00 प्रति दिवस</div>
-              </div>
-
-              {/* Active Crop Highlight Box */}
+            ) : (
+              /* Authentic Government Job Card Sheet */
               <div
                 style={{
-                  position: "absolute",
-                  left: "12%",
-                  top: activeKey === "days_worked" ? "48%" : "22%",
-                  width: "76%",
-                  height: activeKey === "days_worked" ? "38px" : "26px",
-                  border: "2px solid var(--accent-500)",
-                  background: "rgba(199, 125, 19, 0.12)",
-                  borderRadius: "2px",
-                  pointerEvents: "none",
-                  transition: "all 200ms ease",
+                  width: "100%",
+                  background: "#faf9f6",
+                  color: "#1a1d20",
+                  borderRadius: "4px",
+                  border: "1px solid #d5d1c8",
+                  padding: "16px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                  position: "relative",
+                  fontFamily: "var(--font-ui)",
                 }}
-              />
-            </div>
+              >
+                {/* Official Register Header */}
+                <div
+                  style={{
+                    borderBottom: "2px solid #0f2740",
+                    paddingBottom: "8px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "11px", fontWeight: "bold", color: "#0f2740", letterSpacing: "0.5px" }}>
+                      महाराष्ट्र शासन · ग्रामीण विकास विभाग
+                    </div>
+                    <div style={{ fontSize: "13px", fontWeight: "bold", color: "#1a1d20" }}>
+                      महात्मा गांधी / VB-G RAM G रोजगार हमी योजना
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      border: "1.5px solid #6b21a8",
+                      color: "#6b21a8",
+                      fontSize: "9px",
+                      fontWeight: "bold",
+                      padding: "2px 6px",
+                      borderRadius: "2px",
+                      textTransform: "uppercase",
+                      transform: "rotate(-4deg)",
+                    }}
+                  >
+                    प्रमाणित / VERIFIED
+                  </div>
+                </div>
+
+                {/* Structured Document Register Entries */}
+                <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {/* Row 1: Job Card ID */}
+                  <div
+                    onClick={() => setActiveKey("job_card_id")}
+                    style={{
+                      padding: "6px 8px",
+                      borderRadius: "3px",
+                      background: activeKey === "job_card_id" ? "rgba(199,125,19,0.08)" : "transparent",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                    }}
+                  >
+                    <span style={{ color: "#555", fontSize: "11px" }}>जॉब कार्ड क्र. / Job Card No: </span>
+                    <strong style={{ fontFamily: "var(--font-mono)" }}>MH-04-002-019-001/4218</strong>
+                  </div>
+
+                  {/* Row 2: Worker Name */}
+                  <div
+                    onClick={() => setActiveKey("worker_name")}
+                    style={{
+                      padding: "6px 8px",
+                      borderRadius: "3px",
+                      background: activeKey === "worker_name" ? "rgba(199,125,19,0.08)" : "transparent",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                    }}
+                  >
+                    <span style={{ color: "#555", fontSize: "11px" }}>कामगाराचे नाव / Worker Name: </span>
+                    <strong>कमलाबाई रामचंद्र जाधव</strong>
+                  </div>
+
+                  {/* Row 3: Gram Panchayat */}
+                  <div
+                    onClick={() => setActiveKey("village_panchayat")}
+                    style={{
+                      padding: "6px 8px",
+                      borderRadius: "3px",
+                      background: activeKey === "village_panchayat" ? "rgba(199,125,19,0.08)" : "transparent",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                    }}
+                  >
+                    <span style={{ color: "#555", fontSize: "11px" }}>ग्राम पंचायत / Panchayat: </span>
+                    <strong>बोरगाव (Borgaon)</strong>
+                  </div>
+
+                  {/* Section: Muster & Days (Ruled Table Box) */}
+                  <div
+                    style={{
+                      marginTop: "4px",
+                      border: "1px solid #c5c1b8",
+                      borderRadius: "3px",
+                      background: "#f4f1ea",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      onClick={() => setActiveKey("muster_roll_no")}
+                      style={{
+                        padding: "6px 8px",
+                        borderBottom: "1px solid #c5c1b8",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        background: activeKey === "muster_roll_no" ? "rgba(199,125,19,0.08)" : "transparent",
+                      }}
+                    >
+                      <span style={{ color: "#555" }}>मस्टर रोल क्र: </span>
+                      <strong style={{ fontFamily: "var(--font-mono)" }}>MR-2026-0819</strong> (01-08-2026 ते 07-08-2026)
+                    </div>
+
+                    <div
+                      onClick={() => setActiveKey("days_worked")}
+                      style={{
+                        padding: "8px",
+                        borderBottom: "1px solid #c5c1b8",
+                        cursor: "pointer",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background: activeKey === "days_worked" ? "rgba(199,125,19,0.12)" : "transparent",
+                      }}
+                    >
+                      <span style={{ color: "#555", fontSize: "11px" }}>एकूण उपस्थित दिवस / Days Worked:</span>
+                      <span
+                        style={{
+                          color: "#92400e",
+                          fontWeight: "bold",
+                          fontSize: "14px",
+                          fontFamily: "var(--font-mono)",
+                          padding: "1px 6px",
+                          background: "#fef3c7",
+                          borderRadius: "2px",
+                          border: "1px dashed #d97706",
+                        }}
+                      >
+                        [ ६ दिवस / 6 Days ]
+                      </span>
+                    </div>
+
+                    <div
+                      onClick={() => setActiveKey("wage_rate_rupees")}
+                      style={{
+                        padding: "6px 8px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                        background: activeKey === "wage_rate_rupees" ? "rgba(199,125,19,0.08)" : "transparent",
+                      }}
+                    >
+                      <span style={{ color: "#555" }}>दैनिक मजुरी दर / Daily Rate: </span>
+                      <strong>₹300.00 प्रति दिवस (Section 5(3) Floor)</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Animated Dynamic Crop Highlight Box */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: activeCrop.top,
+                    left: "8px",
+                    right: "8px",
+                    height: activeCrop.height,
+                    border: "2px solid var(--accent-500)",
+                    background: "rgba(199, 125, 19, 0.14)",
+                    borderRadius: "3px",
+                    boxShadow: "0 0 0 1px rgba(0,0,0,0.25)",
+                    pointerEvents: "none",
+                    transition: "all 180ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  }}
+                >
+                  <span
+                    style={{
+                      position: "absolute",
+                      right: "6px",
+                      top: "-18px",
+                      background: "var(--accent-500)",
+                      color: "#fff",
+                      fontSize: "9px",
+                      padding: "1px 4px",
+                      borderRadius: "2px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    TARGET
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Right: Extracted Fields */}
         <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-4)" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "var(--space-4)",
+            }}
+          >
             <div>
               <h3 className="card__title">Human Verification Gate</h3>
               <p style={{ margin: "2px 0 0", fontSize: "var(--text-xs)", color: "var(--ink-muted)" }}>
@@ -396,6 +607,8 @@ export default function CaptureAndVerifyPage() {
                   ? `•••• ${field.value.slice(-4)}`
                   : field.value;
 
+              const isCurrent = activeKey === field.key;
+
               return (
                 <div
                   key={field.key}
@@ -403,10 +616,11 @@ export default function CaptureAndVerifyPage() {
                   data-flagged={isFlagged ? "true" : "false"}
                   onClick={() => setActiveKey(field.key)}
                   style={{
-                    border: activeKey === field.key ? "1px solid var(--brand-500)" : undefined,
+                    border: isCurrent ? "1px solid var(--brand-500)" : undefined,
                     borderRadius: "4px",
                     padding: "8px",
                     cursor: "pointer",
+                    transition: "border-color 150ms ease",
                   }}
                 >
                   <div>
@@ -518,7 +732,16 @@ export default function CaptureAndVerifyPage() {
                   {unconfirmedCount} {unconfirmedCount === 1 ? "field" : "fields"} still need checking before computation
                 </span>
               ) : (
-                <span style={{ fontSize: "var(--text-xs)", color: "var(--status-good-ink)", fontWeight: "var(--weight-semi)", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                <span
+                  style={{
+                    fontSize: "var(--text-xs)",
+                    color: "var(--status-good-ink)",
+                    fontWeight: "var(--weight-semi)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
                   <Check size={14} /> All fields confirmed by auditor
                 </span>
               )}
