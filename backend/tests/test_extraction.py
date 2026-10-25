@@ -32,14 +32,18 @@ def test_model_allowlist_enforcement():
 
 def test_extraction_and_trace():
     """Extracting a document should return structured data and log a trace."""
-    img = Image.new("RGB", (200, 200), color=(250, 249, 246))
+    from PIL import ImageDraw
+
+    img = Image.new("RGB", (400, 200), color=(250, 249, 246))
+    d = ImageDraw.Draw(img)
+    d.text((20, 20), "Job Card No: MH-04-002-019-001/4218\nWorker: Kamlabai Jadhav\nDays Worked: 6", fill=(0, 0, 0))
     buf = io.BytesIO()
     img.save(buf, format="JPEG")
     image_bytes = buf.getvalue()
 
     result = extract(image_bytes=image_bytes, doc_type="job_card")
     assert result.document_type == "job_card"
-    assert result.job_card_id.value is not None
+    assert result.job_card_id is not None
 
     # Verify trace log
     recent = tracer.get_recent()

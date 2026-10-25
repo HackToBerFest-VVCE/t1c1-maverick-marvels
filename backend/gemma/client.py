@@ -11,6 +11,11 @@ import os
 import random
 import time
 from typing import Any, Dict, List, Optional, Union
+try:
+    import dotenv
+    dotenv.load_dotenv()
+except ImportError:
+    pass
 import google.genai
 from google.genai import types
 
@@ -20,6 +25,24 @@ ALLOWED_MODELS = {
     "gemma-4-26b-a4b-it",
     "gemma-4-31b-it",
 }
+
+
+ACTIVE_PROVIDER = os.environ.get("GEMMA_PROVIDER", "gemini_api").lower()
+
+
+def get_active_provider() -> str:
+    """Return currently active provider: 'gemini_api' or 'ollama'."""
+    return ACTIVE_PROVIDER
+
+
+def set_active_provider(provider: str) -> str:
+    """Switch active provider at runtime."""
+    global ACTIVE_PROVIDER
+    clean = provider.strip().lower()
+    if clean not in ("gemini_api", "ollama"):
+        raise ValueError(f"Unknown provider '{provider}'. Must be 'gemini_api' or 'ollama'.")
+    ACTIVE_PROVIDER = clean
+    return ACTIVE_PROVIDER
 
 
 def _check_model_allowed(model_id: str) -> None:
@@ -43,9 +66,7 @@ def generate(
     response_mime_type: Optional[str] = None,
 ) -> str:
     """Generate content using authorized Gemma 4 models.
-    Raises ValueError immediately if model_id is not in ALLOWED_MODELS.
-    Retries once on 429 or 503 with jittered backoff. Never retries 400.
-    Traces every call.
+    Enforces model allowlist on both Hosted API and Local Ollama providers.
     """
     _check_model_allowed(model_id)
 
@@ -56,6 +77,70 @@ def generate(
             actual_prompt = contents
         elif isinstance(contents, list) and len(contents) > 0:
             actual_prompt = str(contents[0])
+
+    start_time = time.time()
+
+    # Provider Path 1: Local Ollama Runner
+    if ACTIVE_PROVIDER == "ollama":
+        import base64
+        import json
+        import urllib.request
+
+        ollama_model = "gemma4:26b" if "26b" in model_id else "gemma4:31b"
+        ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+
+        msg_payload: Dict[str, Any] = {"role": "user", "content": actual_prompt}
+        if image_bytes is not None:
+            msg_payload["images"] = [base64.b64encode(image_bytes).decode("ascii")]
+
+        payload = {
+            "model": ollama_model,
+            "messages": [msg_payload],
+            "stream": False,
+            "options": {"num_predict": max_output_tokens},
+        }
+
+        try:
+            req = urllib.request.Request(
+                f"{ollama_host}/api/chat",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                resp_data = json.loads(resp.read().decode("utf-8"))
+                output_text = resp_data.get("message", {}).get("content", "")
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                prompt_toks = resp_data.get("prompt_eval_count", 380)
+                out_toks = resp_data.get("eval_count", 150)
+
+                tracer.record(
+                    model_id=model_id,
+                    endpoint=endpoint_name,
+                    latency_ms=elapsed_ms,
+                    prompt_tokens=prompt_toks,
+                    output_tokens=out_toks,
+                    outcome="OK",
+                    provider="LOCAL",
+                )
+                return output_text
+        except Exception as ollama_err:
+            err_msg = (
+                f"Local Ollama provider unreachable at {ollama_host}: {str(ollama_err)}. "
+                f"Check that 'ollama serve' is running and '{ollama_model}' is available."
+            )
+            tracer.record(
+                model_id=model_id,
+                endpoint=endpoint_name,
+                latency_ms=int((time.time() - start_time) * 1000),
+                prompt_tokens=0,
+                output_tokens=0,
+                outcome="ERR",
+                details=err_msg[:120],
+                provider="LOCAL",
+            )
+            # Strict rule: NEVER silently fall back to Gemini API
+            raise RuntimeError(err_msg)
 
     api_key = os.environ.get("GEMINI_API_KEY")
     start_time = time.time()
@@ -121,10 +206,11 @@ def generate(
 
     # Real call using google-genai
     client = google.genai.Client(api_key=api_key)
-
-    contents: List[Any] = [prompt]
+    contents: List[Any] = []
     if image_bytes is not None:
         contents.append(types.Part.from_bytes(data=image_bytes, mime_type=image_mime_type))
+    if prompt:
+        contents.append(prompt)
 
     config_kwargs: Dict[str, Any] = {}
     if max_output_tokens:
@@ -156,6 +242,7 @@ def generate(
                 prompt_tokens=prompt_toks,
                 output_tokens=out_toks,
                 outcome="OK",
+                provider="GEMINI API",
             )
             return text
 
@@ -170,11 +257,19 @@ def generate(
                     output_tokens=0,
                     outcome="ERR",
                     details=err_str[:120],
+                    provider="GEMINI API",
                 )
                 raise
 
-            if attempt == 0 and ("429" in err_str or "503" in err_str or "quota" in err_str.lower()):
-                sleep_time = random.uniform(1.2, 2.5)
+            if attempt < max_attempts - 1 and (
+                "429" in err_str
+                or "503" in err_str
+                or "quota" in err_str.lower()
+                or "10053" in err_str
+                or "11001" in err_str
+                or "connection" in err_str.lower()
+            ):
+                sleep_time = random.uniform(2.0, 4.0)
                 time.sleep(sleep_time)
                 continue
 
@@ -186,5 +281,6 @@ def generate(
                 output_tokens=0,
                 outcome="ERR",
                 details=err_str[:120],
+                provider="GEMINI API",
             )
             raise

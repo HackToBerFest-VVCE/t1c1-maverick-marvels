@@ -19,6 +19,7 @@ class TraceEntry(BaseModel):
     id: str
     timestamp: str
     model_id: str
+    provider: str = "GEMINI API"  # "GEMINI API" or "LOCAL"
     endpoint: str
     latency_ms: int
     prompt_tokens: int
@@ -45,12 +46,14 @@ class TraceBuffer:
         output_tokens: int,
         outcome: str = "OK",
         details: Optional[str] = None,
+        provider: str = "GEMINI API",
     ) -> TraceEntry:
         trace_id = f"tr_{int(time.time() * 1000)}"
         entry = TraceEntry(
             id=trace_id,
             timestamp=datetime.now().strftime("%H:%M:%S"),
             model_id=model_id,
+            provider=provider,
             endpoint=endpoint,
             latency_ms=latency_ms,
             prompt_tokens=prompt_tokens,

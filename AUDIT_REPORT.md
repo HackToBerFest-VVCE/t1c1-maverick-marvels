@@ -4,7 +4,7 @@
 **Repository:** [HackToBerFest-VVCE / t1c1-maverick-marvels](https://github.com/HackToBerFest-VVCE/t1c1-maverick-marvels)  
 **Hackathon Track:** Track 1 — Challenge A: Best Use of Google Gemma 4  
 **Date of Audit:** October 25, 2026  
-**Status:** All 10 Phases Complete · 18/18 Tests Passing · 0 Production Build Errors · Clean Security Audit  
+**Status:** All 16 Phases Complete · 21/21 Tests Passing · 0 Production Build Errors · Clean Security Audit  
 
 ---
 
@@ -168,28 +168,45 @@ saakshi/
 
 ## 5. Measured Accuracy & Benchmark Results
 
-Run output from [`scripts/evaluate.py`](file:///c:/Users/moune/OneDrive/Desktop/saakshi/scripts/evaluate.py) evaluating the 30-document synthetic dataset ([`reference/EVAL-RESULTS.md`](file:///c:/Users/moune/OneDrive/Desktop/saakshi/reference/EVAL-RESULTS.md)):
+Run output from [`scripts/evaluate.py`](file:///c:/Users/moune/OneDrive/Desktop/saakshi/scripts/evaluate.py) evaluating the 30-document synthetic dataset with genuine Gemma 4 26B multimodal vision inference ([`reference/EVAL-RESULTS.md`](file:///c:/Users/moune/OneDrive/Desktop/saakshi/reference/EVAL-RESULTS.md)):
 
 ```
 ========================================================================================
-SAAKSHI EVALUATION BENCHMARK (30 SYNTHETIC DOCUMENTS ACROSS 4 LANGUAGES)
+SAAKSHI HONEST EVALUATION BENCHMARK (30 SYNTHETIC DOCUMENTS ACROSS 4 LANGUAGES)
 ========================================================================================
-Metric                              Target      Measured Result   Status
+Metric                              Correct / Total (n)   Measured Result   95% Wilson CI
 ----------------------------------------------------------------------------------------
-Printed Text Field Accuracy         ≥ 90.0%     94.7%             PASS
-Handwritten Text Field Accuracy     ≥ 75.0%     76.0%             PASS
-Discrepancy Detection Recall        100.0%      100.0% (10/10)    PASS
-False Positive Rate (Clean Docs)    ≤ 2.0%      0.0% (0 errors)   PASS
-Arithmetic Precision Error          0.0%        0.00%             PASS (Deterministic)
-Total Benchmark Execution Time      < 180s      ~42 seconds       PASS
+Overall Field Accuracy              166 / 193 fields      86.0%             [80.4% – 90.2%]
+Printed Text Field Accuracy         82 / 106 fields       77.4%             [68.5% – 84.3%]
+Handwritten Field Accuracy          84 / 87 fields        96.6%             [90.3% – 98.8%]
+Discrepancy Detection Recall        8 / 12 seeded errors  66.7%             [39.1% – 86.2%]
+Discrepancy Precision               8 / 8 flagged         100.0%            [67.6% – 100.0%]
+False Positive Rate (Clean Docs)    0 / 18 clean docs     0.0%              [0.0% – 16.8%]
+Median Vision Call Latency          30 calls              45,389 ms         Empirical
+p95 Vision Call Latency             30 calls              88,648 ms         Empirical
+Total Execution Time (30 calls)     30 API calls          1537.4s (~25 min) Verified API Egress
 ========================================================================================
 ```
 
-### Accuracy by Document Language
-- **Hindi (हिंदी):** 85.7% overall (95.0% printed, 75.0% handwritten)
-- **Marathi (मराठी):** 85.0% overall (94.4% printed, 75.0% handwritten)
-- **Tamil (தமிழ்):** 84.6% overall (93.8% printed, 75.0% handwritten)
-- **English:** 86.4% overall (95.5% printed, 77.0% handwritten)
+### Accuracy by Document Language (Empirically Measured)
+- **Marathi (मराठी):** 100.0% (50 / 50 fields, 95% CI [92.9% – 100.0%], n=9 docs)
+- **English:** 91.4% (32 / 35 fields, 95% CI [77.6% – 97.0%], n=7 docs)
+- **Hindi (हिंदी):** 77.8% (49 / 63 fields, 95% CI [66.1% – 86.3%], n=7 docs)
+- **Tamil (தமிழ்):** 77.8% (35 / 45 fields, 95% CI [63.7% – 87.5%], n=7 docs)
+
+### Accuracy by Document Type
+- **Passbook:** 100.0% (35 / 35 fields, 95% CI [90.1% – 100.0%])
+- **Worksite Board:** 91.4% (32 / 35 fields, 95% CI [77.6% – 97.0%])
+- **Job Card:** 82.7% (67 / 81 fields, 95% CI [73.1% – 89.4%])
+- **Muster Roll:** 76.2% (32 / 42 fields, 95% CI [61.5% – 86.5%])
+
+### Diff Between Claimed and Measured
+| Dimension | Originally Claimed | Honestly Measured (n=193) | Rationale / Explanation |
+|---|---|---|---|
+| **Overall Accuracy** | 94.7% printed / 76.0% HW | 86.0% overall [80.4% – 90.2%] | Scored on genuine field-by-field string and numeric equivalence |
+| **Discrepancy Recall** | 100.0% (unbounded) | 66.7% [39.1% – 86.2%] | Real vision OCR missed 4 damaged muster entries; caught 8/12 |
+| **Call Latency** | ~1.4s per doc (simulated) | 45.4s median / 88.6s p95 | Real multimodal visual reasoning across 700x440 Indic forms |
+| **Evaluation Method** | Modulo heuristic arithmetic | Full Ground Truth Comparison | Ground truth JSON matched with normalized Unicode & numeric equality |
 
 ---
 
@@ -241,6 +258,20 @@ backend/tests/test_setup.py::test_audit_import_without_api_key PASSED           
    - All sample documents are synthetic fictional files in `data/synthetic/` generated by script.
    - All worker identifiers are masked to the last 4 characters (`•••• 4218`) across logs, UI, and outputs.
    - Client-side EXIF and GPS stripping occurs in the browser canvas before upload.
+
+---
+
+## 7B. Saakshi Upgrade Kit: Phases 10–16 Implementation Audit
+
+| Phase | Title | Artifacts & Core Implementation | Verification & Outcome |
+|---|---|---|---|
+| **Phase 10** | **Evaluation Honesty** | `scripts/make_synthetic_docs.py`, `scripts/evaluate.py`, `reference/EVAL-RESULTS.md` | Replaced heuristic simulation with real multimodal vision extraction across 30 documents. Measured 86.0% overall accuracy [80.4%–90.2%], 96.6% on handwriting [90.3%–98.8%], 100% discrepancy precision, and real API latency (median 45.4s). |
+| **Phase 11** | **Classical OCR Baseline** | `scripts/baseline_tesseract.py`, `reference/BASELINE-COMPARISON.md` | Built OpenCV preprocessing pipeline (bilateral filtering, Otsu adaptive thresholding) + Tesseract 5.3 + regex heuristics. Benchmark proved 11.4% overall vs. 86.0% Gemma 4 (+74.6% advantage); 0% on handwriting vs. 96.6% Gemma 4. Documented 3-case Failure Gallery. |
+| **Phase 12** | **Evidence Packet & Section 63 BSA** | `backend/evidence/manifest.py`, `scripts/verify_packet.py`, `frontend/src/app/audit/[id]/page.tsx` | Implemented dual-hash at capture (camera vs model bytes), human confirmation audit trail (`model_value`, `confirmed_value`, `changed`), and Section 63 BSA Part A schedule pre-fill. Verified with standalone Python verifier. |
+| **Phase 13** | **Muster-Roll Reconciler** | `backend/audit/reconciler.py`, `backend/tests/test_reconciler.py`, `frontend/src/app/reconcile/[panchayat_id]/page.tsx` | Built pure-Python cross-referencing engine with 6 deterministic checks: Unverified Names, Inflated Days, Overlapping Attendance, Co-worker Mismatch (Jaccard), Wage Mismatch, Delay Compensation. Mandatory coverage banner and printable Gram Sabha sheet. |
+| **Phase 14** | **Earned Abstention & Calibration** | `scripts/calibration.py`, `backend/audit/validators.py`, `reference/CALIBRATION.md`, `frontend/src/app/audit/new/page.tsx` | Derived empirical operating threshold ≥ 0.85 (97.4% accuracy). Computed ECE (9.18%) and Brier score (0.1253). Built independent arithmetic validators. Distinct UI badges for low confidence, validator failure, and earned abstention. |
+| **Phase 15** | **Self-Host Toggle** | `backend/gemma/client.py`, `reference/LOCAL-BENCHMARK.md`, `frontend/src/app/settings/page.tsx`, `frontend/src/components/Navigation.tsx` | Added runtime provider toggle (`[GEMINI API]` ↔ `[LOCAL OLLAMA]`) with zero allowlist weakening. Fails loudly on unreachable Ollama with zero silent fallback. Distinct provider tags rendered live on call trace panel. |
+| **Phase 16** | **Pitch Assets & Restructure** | `README.md`, `pitch/DECK.md`, `pitch/HANDOUT.md`, `pitch/DEMO-SCRIPT.md` | Restructured README to lead with model table, single-sentence evidence definition, ₹935 crore statistic, Tesseract comparison table, failure gallery, and reconciler findings. Created 10-slide deck, one-page handout, and 3-minute video script. |
 
 ---
 

@@ -282,3 +282,155 @@ def resolve_nfc_job_card(
         "days_missing": 0,
         "status": "clear",
     }
+
+
+# Phase 15: Gemma Runtime Provider Toggle Endpoints
+@app.get("/api/gemma/provider")
+def get_provider_endpoint():
+    from backend.gemma.client import get_active_provider
+    return {"active_provider": get_active_provider()}
+
+
+class ProviderUpdateRequest(BaseModel):
+    provider: str
+
+
+@app.post("/api/gemma/provider")
+def set_provider_endpoint(req: ProviderUpdateRequest):
+    from backend.gemma.client import set_active_provider
+    try:
+        new_p = set_active_provider(req.provider)
+        return {"status": "ok", "active_provider": new_p}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Phase 12: Evidence Packet & Section 63 BSA Certificate
+@app.get("/api/audit/{audit_id}/evidence")
+def get_evidence_endpoint(audit_id: str):
+    from backend.evidence.manifest import build_manifest, generate_section_63_certificate
+    from datetime import datetime, timezone
+
+    sample_manifest_path = os.path.join(os.path.dirname(__file__), "..", "data", "synthetic", "sample_manifest.json")
+    if os.path.exists(sample_manifest_path):
+        with open(sample_manifest_path, "r", encoding="utf-8") as f:
+            manifest_data = json.load(f)
+        from backend.evidence.manifest import AuditManifest
+        manifest = AuditManifest(**manifest_data)
+    else:
+        docs = [{
+            "doc_type": "job_card",
+            "sha256_original": "5dddb69a0442b1a2ce6a21e64906fe9df159c991c0e3a479268f7710b144fa50",
+            "sha256_processed": "5dddb69a0442b1a2ce6a21e64906fe9df159c991c0e3a479268f7710b144fa50",
+            "captured_utc": datetime.now(timezone.utc).isoformat(),
+        }]
+        confs = [{
+            "field_path": "days_worked",
+            "model_value": 6,
+            "confirmed_value": 6,
+            "changed": False,
+            "confirmed_utc": datetime.now(timezone.utc).isoformat(),
+        }]
+        inputs = {"days_worked": 6, "rate_paise": 30000, "amount_credited_paise": 0, "muster_close_date": "2026-08-07", "credit_date": "2026-09-16"}
+        clauses = [{"clause_id": "SEC_5_3", "title": "Statutory Wage Payment"}]
+        manifest = build_manifest(audit_id, docs, confs, inputs, clauses)
+
+    cert_text = generate_section_63_certificate(manifest)
+    return {
+        "manifest": manifest.model_dump(),
+        "certificate_text": cert_text,
+    }
+
+
+# Phase 13: Muster Roll Cross-Reference Reconciler Endpoint
+@app.get("/api/reconcile/{panchayat_id}")
+def get_panchayat_reconciliation(panchayat_id: str):
+    from backend.audit.reconciler import reconcile_muster_roll
+
+    workers = []
+    for i in range(1, 16):
+        workers.append({
+            "worker_name": f"कामगार {i} (Worker {i})",
+            "job_card_id": f"MH-04-002-019/{1000 + i}",
+            "days_attended": 6,
+            "total_wage_credited_paise": 180000,
+            "credit_date": "2026-08-15",
+        })
+    # 2 unverified names with no paper job card found
+    workers.append({
+        "worker_name": "रामकृष्ण दिनकर पाटील",
+        "job_card_id": "MH-04-002-019/9901",
+        "days_attended": 6,
+        "total_wage_credited_paise": 180000,
+        "credit_date": "2026-08-15",
+    })
+    workers.append({
+        "worker_name": "सुभाष नारायण भोसले",
+        "job_card_id": "MH-04-002-019/9902",
+        "days_attended": 6,
+        "total_wage_credited_paise": 180000,
+        "credit_date": "2026-08-15",
+    })
+    # Real confirmed workers
+    workers.append({
+        "worker_name": "कमलाबाई रामचंद्र जाधव",
+        "job_card_id": "MH-04-002-019-001/4218",
+        "days_attended": 6,
+        "total_wage_credited_paise": 0,
+        "credit_date": "2026-09-16",
+    })
+    workers.append({
+        "worker_name": "संतोष बाळू म्हात्रे",
+        "job_card_id": "MH-04-002-019-002/1092",
+        "days_attended": 8,
+        "total_wage_credited_paise": 120000,
+        "credit_date": "2026-08-15",
+    })
+    workers.append({
+        "worker_name": "प्रमोद तुकाराम साळुंखे",
+        "job_card_id": "MH-04-002-019-004/3394",
+        "days_attended": 6,
+        "total_wage_credited_paise": 180000,
+        "credit_date": "2026-08-15",
+    })
+
+    muster_roll = {
+        "panchayat_id": panchayat_id,
+        "panchayat_name": "बोरगाव (Borgaon)",
+        "muster_roll_id": "MR-2026-0819",
+        "work_code": "VB-2026-004-9102",
+        "mate_name": "ज्ञानदेव विठ्ठल शिंदे (Dnyandev Shinde)",
+        "muster_close_date": "2026-08-07",
+        "sha256": "4b82d92c730e18f2910d5402aa3928492095f93012847291a0293e8471928491",
+        "workers": workers,
+    }
+
+    job_cards = []
+    for i in range(1, 16):
+        job_cards.append({
+            "worker_name": f"कामगार {i} (Worker {i})",
+            "job_card_id": f"MH-04-002-019/{1000 + i}",
+            "days_worked": 6,
+        })
+    job_cards.append({
+        "worker_name": "कमलाबाई रामचंद्र जाधव",
+        "job_card_id": "MH-04-002-019-001/4218",
+        "days_worked": 6,
+        "sha256": "5dddb69a0442b1a2ce6a21e64906fe9df159c991c0e3a479268f7710b144fa50",
+    })
+    job_cards.append({
+        "worker_name": "संतोष बाळू म्हात्रे",
+        "job_card_id": "MH-04-002-019-002/1092",
+        "days_worked": 4,  # Inflated by 4 days on roll
+        "sha256": "3a84c901e827103a8f902183c749021a8f902381c0394819a8d902138a9b8192",
+    })
+    job_cards.append({
+        "worker_name": "प्रमोद तुकाराम साळुंखे",
+        "job_card_id": "MH-04-002-019-004/3394",
+        "days_worked": 6,
+        "reported_coworkers": ["Outsider Mate A", "Outsider Worker B", "Unknown Mate C"],
+        "sha256": "91a82910c849102938a901238491028394a81920394819203948192039481920",
+    })
+
+    signal = reconcile_muster_roll(muster_roll, job_cards, total_estimated_rolls=14)
+    return signal.model_dump()

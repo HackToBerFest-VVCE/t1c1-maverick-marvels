@@ -8,14 +8,54 @@ import {
   ScanLine,
   FileSpreadsheet,
   Cpu,
-  Activity,
+  Layers,
+  Settings,
   Menu,
-  X,
-  ShieldAlert,
+  Server,
+  Cloud,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
 export function Masthead({ onToggleSidebar }: { onToggleSidebar: () => void }) {
+  const [provider, setProvider] = useState<string>("gemini_api");
+  const [switching, setSwitching] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    fetch("http://127.0.0.1:8000/api/gemma/provider")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.active_provider) {
+          setProvider(data.active_provider);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleToggleProvider = async () => {
+    const nextProvider = provider === "gemini_api" ? "ollama" : "gemini_api";
+    setSwitching(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/gemma/provider", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: nextProvider }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Provider switch failed");
+      }
+      setProvider(data.active_provider);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg);
+      setTimeout(() => setErrorMsg(null), 5000);
+    } finally {
+      setSwitching(false);
+    }
+  };
+
   return (
     <header className="masthead">
       <button
@@ -41,6 +81,43 @@ export function Masthead({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
       <div className="masthead__spacer" />
 
+      {/* Runtime Gemma Provider Toggle (Phase 15) */}
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginRight: "var(--space-3)" }}>
+        {errorMsg && (
+          <span style={{ fontSize: "11px", color: "var(--status-critical)", background: "rgba(208, 59, 59, 0.2)", padding: "2px 6px", borderRadius: "var(--radius-xs)" }}>
+            {errorMsg}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={handleToggleProvider}
+          disabled={switching}
+          className="btn btn--ghost"
+          style={{
+            color: "var(--ink-onDark)",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            padding: "3px 8px",
+            fontSize: "11px",
+            fontFamily: "var(--font-mono)",
+            background: provider === "ollama" ? "rgba(217, 89, 38, 0.25)" : "rgba(42, 120, 214, 0.25)",
+            cursor: switching ? "wait" : "pointer",
+          }}
+          title="Click to toggle between Google Gemini API and Local Ollama inference"
+        >
+          {provider === "ollama" ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Server size={13} color="#f0b429" />
+              <strong>[LOCAL OLLAMA]</strong>
+            </span>
+          ) : (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Cloud size={13} color="#5ddb5d" />
+              <strong>[GEMINI API]</strong>
+            </span>
+          )}
+        </button>
+      </div>
+
       <ThemeToggle />
     </header>
   );
@@ -52,8 +129,10 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const navLinks = [
     { href: "/dashboard", label: "SARP Dashboard", icon: LayoutDashboard, count: "86", attention: true },
     { href: "/audit/new", label: "Capture & Verify", icon: ScanLine },
+    { href: "/reconcile/borgaon", label: "Muster Reconciler", icon: Layers },
     { href: "/dashboard#ledger", label: "Discrepancy Ledger", icon: FileSpreadsheet },
     { href: "/demo/reader", label: "Hardware Reader (NFC)", icon: Cpu },
+    { href: "/settings", label: "Inference Settings", icon: Settings },
   ];
 
   return (

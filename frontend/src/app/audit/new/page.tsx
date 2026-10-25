@@ -23,6 +23,9 @@ interface FieldState {
   confirmed: boolean;
   touched: boolean;
   isIdentifier?: boolean;
+  flagReason?: "low_confidence" | "validator_failure" | "dual_read_disagreement" | "unverified_name" | null;
+  flagDetail?: string;
+  abstained?: boolean;
 }
 
 const INITIAL_JOB_CARD_FIELDS: FieldState[] = [
@@ -30,9 +33,11 @@ const INITIAL_JOB_CARD_FIELDS: FieldState[] = [
     key: "days_worked",
     label: "Days Worked on Card",
     value: "6",
-    confidence: 0.68, // Low confidence (<0.75), sorts to top
+    confidence: 0.68, // Low confidence (<0.85 calibrated threshold), sorts to top
     confirmed: false,
     touched: false,
+    flagReason: "low_confidence",
+    flagDetail: "Low Model Confidence (0.68 < 0.85 calibrated operating threshold): smudged handwritten numeral in column 4.",
   },
   {
     key: "job_card_id",
@@ -161,7 +166,7 @@ export default function CaptureAndVerifyPage() {
     );
   };
 
-  const flaggedFields = fields.filter((f) => f.confidence < 0.75);
+  const flaggedFields = fields.filter((f) => f.confidence < 0.85 || f.flagReason != null);
   const allFlaggedTouched = flaggedFields.every((f) => f.touched || f.confirmed);
 
   const handleConfirmAllRemaining = () => {
@@ -216,10 +221,12 @@ export default function CaptureAndVerifyPage() {
     }
   };
 
-  // Sort fields: flagged low confidence first
+  // Sort fields: flagged low confidence / validator failures first
   const sortedFields = [...fields].sort((a, b) => {
-    if (a.confidence < 0.75 && b.confidence >= 0.75) return -1;
-    if (a.confidence >= 0.75 && b.confidence < 0.75) return 1;
+    const aFlag = a.confidence < 0.85 || a.flagReason != null;
+    const bFlag = b.confidence < 0.85 || b.flagReason != null;
+    if (aFlag && !bFlag) return -1;
+    if (!aFlag && bFlag) return 1;
     return 0;
   });
 
@@ -600,7 +607,7 @@ export default function CaptureAndVerifyPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
             {sortedFields.map((field) => {
-              const isFlagged = field.confidence < 0.75;
+              const isFlagged = field.confidence < 0.85 || field.flagReason != null;
               const isRevealed = revealedIds[field.key];
               const displayVal =
                 field.isIdentifier && !isRevealed
@@ -624,28 +631,47 @@ export default function CaptureAndVerifyPage() {
                   }}
                 >
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
                       <span className="verify__key">{field.label}</span>
                       {isFlagged && (
                         <span
                           style={{
                             fontSize: "11px",
                             color: "var(--accent-600)",
+                            background: "var(--accent-100)",
+                            padding: "1px 6px",
+                            borderRadius: "var(--radius-xs)",
                             fontWeight: "var(--weight-semi)",
                             display: "inline-flex",
                             alignItems: "center",
-                            gap: "2px",
+                            gap: "4px",
                           }}
                         >
-                          <AlertTriangle size={11} /> Please check this field
+                          <AlertTriangle size={11} />
+                          {field.flagReason === "low_confidence"
+                            ? "Low Model Confidence (<0.85)"
+                            : field.flagReason === "validator_failure"
+                            ? "Failed Arithmetic Validator"
+                            : field.flagReason === "dual_read_disagreement"
+                            ? "Dual-Read Disagreement"
+                            : field.abstained
+                            ? "Earned Abstention (Declined Guess)"
+                            : "Flagged for Verification"}
                         </span>
                       )}
                     </div>
+
+                    {isFlagged && field.flagDetail && (
+                      <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginBottom: "6px", fontStyle: "italic" }}>
+                        {field.flagDetail}
+                      </div>
+                    )}
 
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <input
                         type="text"
                         className="input"
+                        placeholder={field.abstained ? "could not read — please enter manually" : undefined}
                         value={displayVal}
                         onChange={(e) => handleFieldChange(field.key, e.target.value)}
                         style={{

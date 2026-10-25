@@ -7,6 +7,7 @@ interface TraceEntry {
   id: string;
   timestamp: string;
   model_id: string;
+  provider?: string;
   endpoint: string;
   latency_ms: number;
   prompt_tokens: number;
@@ -20,6 +21,7 @@ const DEFAULT_TRACES: TraceEntry[] = [
     id: "tr_1",
     timestamp: "15:28:42",
     model_id: "gemma-4-31b-it",
+    provider: "GEMINI API",
     endpoint: "orchestrator/step_2",
     latency_ms: 640,
     prompt_tokens: 580,
@@ -30,8 +32,9 @@ const DEFAULT_TRACES: TraceEntry[] = [
     id: "tr_2",
     timestamp: "15:28:40",
     model_id: "gemma-4-31b-it",
+    provider: "LOCAL",
     endpoint: "orchestrator/step_1",
-    latency_ms: 710,
+    latency_ms: 1840,
     prompt_tokens: 420,
     output_tokens: 110,
     outcome: "OK",
@@ -40,6 +43,7 @@ const DEFAULT_TRACES: TraceEntry[] = [
     id: "tr_3",
     timestamp: "15:28:34",
     model_id: "gemma-4-26b-a4b-it",
+    provider: "GEMINI API",
     endpoint: "extract/job_card",
     latency_ms: 890,
     prompt_tokens: 840,
@@ -96,19 +100,36 @@ export function TracePanel() {
       </div>
 
       <div className="trace" aria-label="Gemma 4 call execution trace log">
-        {traces.map((t) => (
-          <div key={t.id} className="trace__row">
-            <span className="trace__time">{t.timestamp}</span>
-            <span className="trace__model">{t.model_id}</span>
-            <span style={{ color: "rgba(242,241,236,0.7)" }}>[{t.endpoint}]</span>
-            <span className={t.outcome === "OK" ? "trace__ok" : "trace__err"}>
-              {t.outcome}
-            </span>
-            <span className="trace__meta">
-              {t.latency_ms}ms · {t.prompt_tokens + t.output_tokens} tok
-            </span>
-          </div>
-        ))}
+        {traces.map((t) => {
+          const isLocal = t.provider === "LOCAL" || (t.provider && t.provider.toLowerCase().includes("local"));
+          return (
+            <div key={t.id} className="trace__row">
+              <span className="trace__time">{t.timestamp}</span>
+              <span className="trace__model">{t.model_id}</span>
+              <span
+                style={{
+                  fontSize: "10px",
+                  padding: "1px 5px",
+                  borderRadius: "3px",
+                  fontWeight: 600,
+                  letterSpacing: "0.5px",
+                  background: isLocal ? "rgba(180, 83, 9, 0.25)" : "rgba(16, 185, 129, 0.2)",
+                  color: isLocal ? "#f59e0b" : "#34d399",
+                  border: isLocal ? "1px solid rgba(245, 158, 11, 0.4)" : "1px solid rgba(52, 211, 153, 0.4)",
+                }}
+              >
+                [{isLocal ? "LOCAL" : "GEMINI API"}]
+              </span>
+              <span style={{ color: "rgba(242,241,236,0.7)" }}>[{t.endpoint}]</span>
+              <span className={t.outcome === "OK" ? "trace__ok" : "trace__err"}>
+                {t.outcome}
+              </span>
+              <span className="trace__meta">
+                {t.latency_ms}ms · {t.prompt_tokens + t.output_tokens} tok
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

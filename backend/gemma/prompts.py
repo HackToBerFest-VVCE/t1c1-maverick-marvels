@@ -21,7 +21,9 @@ CRITICAL RULES:
 7. Return raw valid JSON only without markdown formatting.
 """
 
-JOB_CARD_PROMPT = """Analyze this Job Card page image and extract its fields according to this exact JSON format:
+JOB_CARD_PROMPT = """Analyze this Indian Rural Employment Guarantee (VB-G RAM G) Worker Job Card document image.
+IMPORTANT: This is a Government of India rural welfare employment record, NOT a vehicle repair or mechanic job order.
+Extract its fields according to this exact JSON format:
 {
   "document_type": "job_card",
   "job_card_id": {"value": "<string or null>", "confidence": <float>, "crop_ref": [<int>, <int>, <int>, <int>]},
@@ -34,7 +36,7 @@ JOB_CARD_PROMPT = """Analyze this Job Card page image and extract its fields acc
   "work_period_end": {"value": "<YYYY-MM-DD or null>", "confidence": <float>, "crop_ref": [<int>, <int>, <int>, <int>]},
   "wage_rate_paise": {"value": <int or 30000>, "confidence": <float>, "crop_ref": [<int>, <int>, <int>, <int>]}
 }
-Remember: Do NOT calculate or sum days. Transcribe only what is written."""
+Remember: Transcribe only what is written on the document. Do not invent mechanical parts or forklift repairs."""
 
 PASSBOOK_PROMPT = """Analyze this Bank Passbook transaction page image and extract fields:
 {
