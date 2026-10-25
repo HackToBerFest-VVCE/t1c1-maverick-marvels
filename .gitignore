@@ -3,6 +3,7 @@
 .env.local
 firmware/**/secrets.h
 *.zip
+prompts/
 
 # python
 __pycache__/
