@@ -3,6 +3,7 @@
 .env.local
 firmware/**/secrets.h
 *.zip
+*.html
 prompts/
 
 # python
